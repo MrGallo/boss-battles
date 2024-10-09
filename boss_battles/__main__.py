@@ -16,7 +16,7 @@ battle = BossBattle(players=players, bosses=bosses)
 print("Running game")
 ending = 'es' if len(battle._bosses) > 1 else ''
 boss_names = ', '.join(map(str.upper, [b._name for b in battle._bosses.values()]))
-print(f"Boss{ending}: {boss_names}"
+print(f"Boss{ending}: {boss_names}")
 print()
 print("Players:\n" + "\n".join(map(str.upper, [p._name for p in battle._players.values()])))
 while battle.next_round():

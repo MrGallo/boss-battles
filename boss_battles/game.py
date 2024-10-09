@@ -112,6 +112,8 @@ class BossBattle:
         player = self._players[m.user]
         target = self._bosses[m.target]
         ChosenAbility = AbilityRegistry.registry.get(m.action)
+        if not ChosenAbility:
+            return f"{player._name.upper()}: INVALID ACTION!"
         return self._apply_action(player, ChosenAbility, target)
 
 
