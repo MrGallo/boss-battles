@@ -24,7 +24,7 @@ def test_practice_dummy_battle(mock_randint):
     battle.handle_action(message)
 
     # Confirm the punch was made on the boss
-    ability = AbilityRegistry.registry.get("punch")
+    ability = AbilityRegistry.registry.get(message.action)
     assert ability.identifier == "punch"
 
     assert BossBattle.calc_modifier(boss._stats.dexterity) <= 0  # AC of stationary practice dummy
@@ -38,7 +38,8 @@ def test_practice_dummy_battle(mock_randint):
     assert boss._stats.health == 500
 
 
-def test_practice_dummy_health_expands_when_damaged_beyond_capacity():
+@patch("random.randint", side_effect=[19] + [1] * 1000)
+def test_practice_dummy_health_expands_when_damaged_beyond_capacity(mock_randint):
     class MonsterTestAttack(Ability):
         identifier = "monstertest"
         name = "Monster Test Attack"

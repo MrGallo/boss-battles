@@ -45,3 +45,16 @@ def test_stats_add_together():
     assert a.wisdom == 65
     assert a.charisma == 76
     assert a.intelligence == 87
+
+
+def test_multiple_bosses_shouldnt_share_stats():
+    s1 = Squirrel()
+    s2 = Squirrel()
+    battle = BossBattle(players=[], bosses=[s1, s2])
+
+    s1._stats.health -= 1
+    assert s1._stats.health != s2._stats.health
+
+
+# test_multiple_bosses_shouldnt_have_the_same_resistances():
+    "They should to start, but suffer different effect vulnerabilities individually"

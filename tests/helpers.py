@@ -1,3 +1,6 @@
+from boss_battles.game_server import GameServer
+
+
 class FakeRadio:
     def __init__(self, messages: list[str] = None):
         if messages == None:
@@ -32,3 +35,8 @@ class FakeReader:
         self.messages = []
         return tmp
     
+
+class FakeGameServer(GameServer):
+    def run(self):
+        self._get_messages()
+        self._current_phase()

@@ -5,7 +5,7 @@ from boss_battles.character import Squirrel, Player, Stats
 from boss_battles.game import BossBattle
 from boss_battles.ability import Ability, EffectType
 from boss_battles.game_server import GameServer
-from helpers import FakeReader
+from helpers import FakeReader, FakeGameServer
 
 
 # class GameRunner:
@@ -72,17 +72,20 @@ def test_squirrel_battle(mock_randint):
         "player/register",
         "done"
     ])
-    runner = GameServer(bosses=[boss], reader=reader, testing=True)
+    runner = FakeGameServer(bosses=[boss], reader=reader, player_turn_time_seconds=0)
     runner.run()
     assert len(runner.battle.players) == 1
-    assert runner._current_phase == runner._battle_phase
+    assert runner._current_phase == runner._battle_round_init
+    runner.run()  # run round init
 
     boss_health_before = boss._stats.health
     player = runner.battle.get_player('player')
     player_health_before = player._stats.health
     reader.add_message("player@squirrel/punch")
-    runner.run()
+    runner.run()  # run player turn
     assert boss._stats.health == boss_health_before - 2
+
+    runner.run()  # run boss turn
     assert player._stats.health == player_health_before - 2
     
 
@@ -95,7 +98,7 @@ def test_squirrel_battle_taking_correct_solves_into_account(mock_randint):
         "player/register",
         "done"
     ])
-    runner = GameServer(bosses=[boss], reader=reader, testing=True)
+    runner = FakeGameServer(bosses=[boss], reader=reader)
     runner.run()
 
     boss_previous_health = boss._stats.health

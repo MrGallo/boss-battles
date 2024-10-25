@@ -39,10 +39,17 @@ git pull origin main
 ```
 
 ### 2. Install dependancies
+#### Running on windows
+```bash
+# Install the dependencies listed in the pyproject.toml file
+poetry install --extras "windows"
+```
+#### Running on linux
 ```bash
 # Install the dependencies listed in the pyproject.toml file
 poetry install
 ```
+
 
 ### 3. Create a new branch to develop on
 ```bash
@@ -148,6 +155,7 @@ while True:
 - Open WSL and run: `dmesg | grep tty`
     - This will show something like /dev/ttyUSB0 or /dev/ttyACM0
 - Grant Permissions to the Serial Port: `sudo chmod 666 /dev/ttyACM0  # Replace with your actual port if different`
+
 
 ### Registering as a player
 ```python

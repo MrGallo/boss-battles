@@ -12,6 +12,13 @@ from .ability import AbilityRegistry, Ability, EffectType
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
 
+class InvalidTargetError(Exception):
+    pass
+
+class TurnAlreadyTakenError(Exception):
+    pass
+
+
 class BossBattle:
     def __init__(self, players: list[Character], bosses: list[Character]):
         # TODO: need a check to ensure all players and bosses have a unique name, or give them one like boss1, boss2.
@@ -52,6 +59,8 @@ class BossBattle:
 
         # self._all_character_names: set[str] = set(b._name for b in bosses) | self._all_player_names
         self._round_count = 0
+
+        self._players_who_have_acted = set()
     
     @property
     def players(self) -> tuple[Character]:
@@ -126,7 +135,11 @@ class BossBattle:
         #     continue
 
         caster = self._players[m.user]
-        target = self._bosses[m.target]
+        try:
+            target = self._bosses[m.target]
+        except KeyError:
+            raise InvalidTargetError(f"Character named '{m.target}' does not exist.")
+        
         ChosenAbility = AbilityRegistry.registry.get(m.action)
         if not ChosenAbility:
             return f"{caster._name.upper()}: INVALID ACTION!"
@@ -134,6 +147,8 @@ class BossBattle:
         ability: Ability = ChosenAbility()
         # print(ability.identifier)
         if type(caster) is Player:
+            if caster._name in self._players_who_have_acted:
+                raise TurnAlreadyTakenError(f"'{caster._name}' has already acted this round.")
             try:
                 solve_token = m.args[0]
             except IndexError:  # abilities like "Punch" don't require a solve token
@@ -141,6 +156,9 @@ class BossBattle:
 
             if not ability.verify(self.get_opportunity_token(target), solve_token):
                 return f"WRONG SOLVE TOKEN - {caster._name}/{ability.identifier} {solve_token}"
+        
+            self._players_who_have_acted.add(caster._name)
+
         return self._apply_action(caster, ability, target)
 
 
@@ -158,11 +176,10 @@ class BossBattle:
         hit_roll, crit = BossBattle.hit_roll(caster, chosen_ability.modifier_type)
         # logging.info(f"{caster._name} rolled {hit_roll}.{' CRIT!' if crit else ''} ")
 
-        target_ac = BossBattle.calc_ac(target)
-
-        if crit is False and hit_roll < target_ac:
+        if not BossBattle.is_hit(crit, hit_roll, target):
             return f"{caster._name}'s {chosen_ability.name} MISSES {target._name}."
 
+        # print("HIT.. damage rolling...")
         # damage roll   
         ability_modifier = BossBattle.calc_modifier(caster._stats.get(chosen_ability.modifier_type.value))
         damage_roll = BossBattle.damage_roll(
@@ -192,6 +209,11 @@ class BossBattle:
             log_string += f"\n{target._name} IS DEFETED!"
         
         return log_string
+
+    @staticmethod
+    def is_hit(is_crit: bool, hit_roll: int, target: Character) -> bool:
+        target_ac = BossBattle.calc_ac(target)
+        return is_crit is True or (hit_roll >= target_ac)
 
     @staticmethod
     def calc_actual_damage(target: Character, damage: int, effect_type: EffectType) -> int:
@@ -260,8 +282,8 @@ class BossBattle:
         for caster, ability_ident, target, solve_token in actions:
             chosen_ability = AbilityRegistry.registry.get(ability_ident)()
             op_token = self.get_opportunity_token(target)
-            print(solve_token)
-            print(chosen_ability.verify(op_token, solve_token))
+            # print(solve_token)
+            # print(chosen_ability.verify(op_token, solve_token))
             if chosen_ability.verify(op_token, solve_token):
                 log_string += self._apply_action(caster, chosen_ability, target) + "\n"
             else:

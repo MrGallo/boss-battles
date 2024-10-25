@@ -59,6 +59,10 @@ class Stats:
             charisma=self.charisma + other.charisma
         )
 
+    def copy(self) -> 'Stats':
+        "Reuses the __add__ method"
+        return self + Stats()
+
     def get(self, stat_name: str) -> int:
         return getattr(self, stat_name)
 
@@ -132,6 +136,7 @@ class Player:
 class Boss:
     _name: str
     _stats: Stats
+    _base_stats: Stats
     _ability_set: tuple[str]
     _opportunity_token_length: int = 4
     _resistances: list['EffectType'] = []
@@ -142,6 +147,7 @@ class Boss:
         self._resistances = getattr(self, '_resistances', [])
         self._vulnerabilities = getattr(self, '_vulnerabilities', [])
         self._immunities = getattr(self, '_immunities', [])
+
 
     def is_alive(self):
         return self._stats.health > 0
@@ -172,8 +178,11 @@ class Boss:
 class Squirrel(Boss):
     _name: str = "squirrel"
     _base_stats: Stats = Stats(health=5, strength=10, constitution=5, dexterity=100, wisdom=1, charisma=1, intelligence=1)
-    _stats:      Stats = Stats(health=5, strength=10, constitution=5, dexterity=100, wisdom=1, charisma=1, intelligence=1)
     _ability_set = ("bite", "cower")
+
+    def __init__(self):
+        super().__init__()
+        self._stats = self._base_stats.copy()
 
     def do_turn(self, battle: 'BossBattle') -> Action:
         ability = random.choice(self._ability_set)

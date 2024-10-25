@@ -9,6 +9,9 @@ readme = "README.md"
 python = "^3.10"
 pyserial = "^3.5"
 
+[tool.poetry.extras]
+windows = ["windows-curses"]
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
 

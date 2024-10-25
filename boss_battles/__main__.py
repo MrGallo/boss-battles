@@ -1,10 +1,13 @@
 import argparse
+import curses
 
 
 from .game_server import GameServer, SerialReader
 from .character import Squirrel
+from tests.helpers import FakeReader
 
-def main():
+def main(stdscr):
+    curses.curs_set(0)
     # Set up argument parsing
     parser = argparse.ArgumentParser(description="Read from a serial port.")
     
@@ -21,13 +24,20 @@ def main():
         default=115200, 
         help='The baud rate for the serial connection.'
     )
+    parser.add_argument(
+        '--debug', 
+        type=bool, 
+        default=False, 
+        help='Enter into debug mode.'
+    )
 
     # Parse arguments
     args = parser.parse_args()
-
     reader = SerialReader(port=args.port, baud_rate=args.baud_rate)
-    game = GameServer(bosses=[Squirrel()], reader=reader)
+    if args.debug:
+        reader = FakeReader()
+    game = GameServer(bosses=[Squirrel()], reader=reader, stdscr=stdscr)
     game.run()
 
 if __name__ == "__main__":
-    main()
+    curses.wrapper(main)

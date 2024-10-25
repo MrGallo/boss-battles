@@ -2,9 +2,10 @@ import pytest
 from unittest.mock import patch
 
 
-from boss_battles.game import BossBattle
+from boss_battles.game import BossBattle, InvalidTargetError
 from boss_battles.character import Squirrel, Player, Stats, Boss
 from boss_battles.ability import EffectType, AbilityRegistry
+from boss_battles.command import Command
 
 
 def test_boss_battle_roll():
@@ -306,3 +307,13 @@ def test_boss_battle_apply_action_misses_squirrel(mock_randint):
 
     result_string = battle._apply_action(player, ability, boss)
     assert "test's Punch MISSES squirrel" in result_string
+
+
+def test_handle_action_throws_error_targeting_invalid_character_name():
+    cmd = Command("player1@wrongname/punch")
+    boss = Squirrel()
+    player = Player('player1')
+    battle = BossBattle(bosses=[boss], players=[player])
+
+    with pytest.raises(InvalidTargetError):
+        battle.handle_action(cmd)
