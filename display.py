@@ -26,7 +26,7 @@ def test_player_turn_phase(stdscr):
         "player1@squirrel/punch"
     ]
     boss = Squirrel()
-    boss._stats.health -= 1
+    boss._health -= 1
     game = GameServer(bosses=[boss], reader=reader, stdscr=stdscr, player_turn_time_seconds=2)
     game._registered_usernames.add('player1')
     game._wrap_up_registration_phase()

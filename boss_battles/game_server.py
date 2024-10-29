@@ -232,10 +232,11 @@ class GameServer:
             bar_panel = curses.newwin(bar_panel_height, width, 0, 0)
             bar_width = width // 2
             for i, boss in enumerate(self._battle.bosses):
-                percent = boss._stats.health / boss._base_stats.health
+                percent = boss.get_health() / boss.get_max_health()
                 remaining = int(bar_width * percent)
                 gone = bar_width - remaining
-                bar = f"{boss._name.upper():>10} {'█' * remaining}{'░' * gone} ({boss._stats.health} / {boss._base_stats.health})"
+                remaining, maximum = boss.get_remaining_and_max_health()
+                bar = f"{boss._name.upper():>10} {'█' * remaining}{'░' * gone} ({remaining} / {maximum})"
                 bar_panel.addstr(i + 2, (width//2) - (len(bar)//2), bar)
             
             bar_panel.refresh()

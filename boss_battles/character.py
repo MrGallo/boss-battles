@@ -234,7 +234,6 @@ class Squirrel(Boss):
 
     def do_turn(self, battle: 'BossBattle') -> Action:
         ability = random.choice(self._ability_set)
-        print(ability)
         random_player = random.choice(tuple(battle.players))
         return (self, ability, random_player)
 
