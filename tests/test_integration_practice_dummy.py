@@ -11,13 +11,13 @@ from boss_battles.ability import AbilityRegistry, Ability, EffectType
 @patch("random.randint", side_effect=[10, 1])
 def test_practice_dummy_battle(mock_randint):
     boss = PracticeDummy()
-    player = Player("player")
+    player = Player.roll_fighter("player")
     battle = BossBattle(players=[player], bosses=[boss])
     battle._generate_opportunity_tokens()
     assert len(battle._boss_tokens) == 1
     assert type(battle._boss_tokens['dummy']) is list
 
-    assert boss._stats.health == 500
+    assert boss.get_health() == 500
 
     # PLAYER TURN
     message = Command("player@dummy/punch")
@@ -27,15 +27,16 @@ def test_practice_dummy_battle(mock_randint):
     ability = AbilityRegistry.registry.get(message.action)
     assert ability.identifier == "punch"
 
-    assert BossBattle.calc_modifier(boss._stats.dexterity) <= 0  # AC of stationary practice dummy
+    assert Stats.calc_modifier(boss.stats.dexterity) <= 0  # AC of stationary practice dummy
 
-    assert boss._stats.health == 500 - 1
+    # punch is 1 dmg +3 str mod = 4 damage
+    assert boss.get_health() == 500 - 4
 
     # BOSS TURN
     boss.do_turn(battle)
 
     # the practice dummy restores whatever damage it took
-    assert boss._stats.health == 500
+    assert boss.get_health() == 500
 
 
 @patch("random.randint", side_effect=[19] + [1] * 1000)
@@ -52,24 +53,23 @@ def test_practice_dummy_health_expands_when_damaged_beyond_capacity(mock_randint
 
 
     boss = PracticeDummy()
-    player = Player("player")
+    player = Player.roll_fighter("player")
     battle = BossBattle(players=[player], bosses=[boss])
     battle._generate_opportunity_tokens()
 
-    assert boss._stats.health == 500
+    assert boss.get_health() == 500
 
     # PLAYER TURN
     message = Command("player@dummy/monstertest")
     battle.handle_action(message)
 
-    assert boss._stats.health == 500 - 1000
+    assert boss.get_health() == 0
 
     # BOSS TURN
     boss.do_turn(battle)
 
-    # Dummy should add x2 the damage deficit caused by the last round
-    # 500 - 1000 = -500
-    # so it should add 250 hp to base stats
-    assert boss._base_stats.health == 500 + 250
-    assert boss._stats.health == 500 + 250
+    # Dummy should add x2 the previous health
+    # 500 * 2 = 1000
+    assert boss.get_max_health() == 1000
+    assert boss.get_health() == 1000
 

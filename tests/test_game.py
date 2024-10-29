@@ -2,10 +2,19 @@ import pytest
 from unittest.mock import patch
 
 
-from boss_battles.game import BossBattle, InvalidTargetError
+from boss_battles.game import BossBattle, InvalidTargetError, InvalidAbilityError
 from boss_battles.character import Squirrel, Player, Stats, Boss
-from boss_battles.ability import EffectType, AbilityRegistry
+from boss_battles.ability import EffectType, AbilityRegistry, Ability
 from boss_battles.command import Command
+
+
+@pytest.fixture
+def test_boss():
+    class TestBoss(Boss):
+        def do_turn(self):
+            pass
+
+    return TestBoss("TestBoss", (1, 4), Stats())
 
 
 def test_boss_battle_roll():
@@ -25,35 +34,26 @@ def test_boss_battle_roll_with_only_2s(mock_randint):
 
 
 @patch("random.randint", side_effect=lambda *args: 1)
-def test_boss_battle_hit_roll_accounts_for_ability_modifier(mock_randint):
-    class TestChar:
-        _stats = Stats(strength=10, dexterity=12)
-
-    test_char = TestChar()
-
-    assert BossBattle.hit_roll(test_char, Stats.Type.STRENGTH) == (1, False)  # roll of 1 plus a 0 modifier
-    assert BossBattle.hit_roll(test_char, Stats.Type.DEXTERITY) == (2, False)  # roll of 1 plus a 1 modifier
+def test_boss_battle_hit_roll_accounts_for_ability_modifier(mock_randint, test_boss):
+    test_boss._base_stats.strength = 10
+    test_boss._base_stats.dexterity = 12
+    assert BossBattle.hit_roll(test_boss, Stats.Type.STRENGTH) == (3, False)  # roll of 1, 2 proficiency bonus, plus a 0 modifier
+    assert BossBattle.hit_roll(test_boss, Stats.Type.DEXTERITY) == (4, False)  # roll of 1 plus a 1 modifier
 
 
 @patch("random.randint", side_effect=lambda *args: 20)
-def test_boss_battle_hit_roll_accounts_for_ability_modifier_with_crit(mock_randint):
-    class TestChar:
-        _stats = Stats(strength=10, dexterity=12)
+def test_boss_battle_hit_roll_accounts_for_ability_modifier_with_crit(mock_randint, test_boss):
+    test_boss._base_stats.strength = 10
+    test_boss._base_stats.dexterity = 12
 
-    test_char = TestChar()
-
-    assert BossBattle.hit_roll(test_char, Stats.Type.STRENGTH) == (20, True)  # roll of 20 plus a 0 modifier
-    assert BossBattle.hit_roll(test_char, Stats.Type.DEXTERITY) == (21, True)  # roll of 20 plus a 1 modifier
+    assert BossBattle.hit_roll(test_boss, Stats.Type.STRENGTH) == (22, True)  # roll of 20 plus a 0  (+2 proficiency bonus)
+    assert BossBattle.hit_roll(test_boss, Stats.Type.DEXTERITY) == (23, True)  # roll of 20 plus a 1 modifier (+2 proficiency bonus)
 
 
 @patch("random.randint", side_effect=lambda *args: 19)
-def test_boss_battle_hit_roll_of_20_not_necessarily_a_crit(mock_randint):
-    class TestChar:
-        _stats = Stats(strength=10, dexterity=12)
-
-    test_char = TestChar()
-
-    assert BossBattle.hit_roll(test_char, Stats.Type.DEXTERITY) == (20, False)  # roll of 19 plus a 1 modifier, NOT a crit
+def test_boss_battle_hit_roll_of_20_not_necessarily_a_crit(mock_randint, test_boss):
+    test_boss._base_stats.dexterity = 12
+    assert BossBattle.hit_roll(test_boss, Stats.Type.DEXTERITY) == (22, False)  # roll of 19 plus a 1 modifier, NOT a crit (+2 proficiency bonus)
 
 @patch("random.randint", side_effect=[6, 5, 4, 3])
 def test_boss_battle_damage_roll_no_crit(mock_randint):
@@ -65,152 +65,113 @@ def test_boss_battle_damage_roll_no_crit(mock_randint):
     assert BossBattle.damage_roll(  # roll of 6
         effect_die=(1, 6),
         ability_modifier=0,
-        proficiency_bonus=0,
         crit=False
     ) == 6
 
     assert BossBattle.damage_roll(  # roll of 5
         effect_die=(1, 6),
         ability_modifier=0,
-        proficiency_bonus=0,
         crit=False
     ) == 5
 
     assert BossBattle.damage_roll(  # roll of 4 and 3
         effect_die=(2, 6),
         ability_modifier=0,
-        proficiency_bonus=0,
         crit=False
     ) == 7
 
 @patch("random.randint", side_effect=lambda *args: 1)
 def test_boss_battle_damage_roll_accounts_for_modifier(mock_randint):
-    assert BossBattle.damage_roll((1, 6), 2, 0, False) == 3, "roll of 1 plus modifier of 2"
-    assert BossBattle.damage_roll((1, 6), 3, 0, False) == 4, "roll of 1 plus modifier of 3"
-
-
-@patch("random.randint", side_effect=lambda *args: 1)
-def test_boss_battle_damage_roll_accounts_for_proficiency_bonus(mock_randint):
-    assert BossBattle.damage_roll((1, 6), 0, 1, False) == 2, "roll of 1 plus prof of 1"
-    assert BossBattle.damage_roll((1, 6), 0, 2, False) == 3, "roll of 1 plus prof of 2"
+    assert BossBattle.damage_roll((1, 6), 2, False) == 3, "roll of 1 plus modifier of 2"
+    assert BossBattle.damage_roll((1, 6), 3, False) == 4, "roll of 1 plus modifier of 3"
 
 
 @patch("random.randint", side_effect=[2, 4, 5, 3])
 def test_boss_battle_damage_roll_accounts_for_crit(mock_randint):
-    assert BossBattle.damage_roll((1, 6), 0, 0, True) == 6, "roll of 2,4"
-    assert BossBattle.damage_roll((1, 6), 0, 0, True) == 8, "roll of 5,3"
+    assert BossBattle.damage_roll((1, 6), 0, True) == 6, "roll of 2,4"
+    assert BossBattle.damage_roll((1, 6), 0, True) == 8, "roll of 5,3"
 
 
-def test_boss_battle_actual_damage_without_resistances_or_immunities():
-    class TestBoss(Boss):
-        _resistances = []
-        _vulnerabilities = []
-        _immunities = []
-    
+def test_boss_battle_actual_damage_without_resistances_or_immunities(test_boss):
+
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=10,
         effect_type=EffectType.BLUDGEONING
     ) == 10
     
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=15,
         effect_type=EffectType.BLUDGEONING
     ) == 15
 
 
-def test_boss_battle_actual_damage_with_resistances():
-    class TestBoss(Boss):
-        _name = "Test Boss"
-        _resistances = [EffectType.BLUDGEONING, EffectType.SLASHING]
-        _vulnerabilities = []
-        _immunities = []
-    
+def test_boss_battle_actual_damage_with_resistances(test_boss):
+    test_boss._resistances = [EffectType.BLUDGEONING, EffectType.SLASHING]
+
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=10,
         effect_type=EffectType.BLUDGEONING
     ) == 5
     
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=15,
         effect_type=EffectType.SLASHING
     ) == 7
 
 
-def test_boss_battle_actual_damage_with_vunerabilities():
-    class TestBoss(Boss):
-        _name = "Test Boss"
-        _resistances = []
-        _vulnerabilities = [EffectType.BLUDGEONING, EffectType.SLASHING]
-        _immunities = []
+def test_boss_battle_actual_damage_with_vunerabilities(test_boss):
+    test_boss._vulnerabilities = [EffectType.BLUDGEONING, EffectType.SLASHING]
     
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=10,
         effect_type=EffectType.BLUDGEONING
     ) == 20
     
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=15,
         effect_type=EffectType.SLASHING
     ) == 30
 
 
-def test_boss_battle_actual_damage_with_immunities():
-    class TestBoss(Boss):
-        _name = "Test Boss"
-        _resistances = []
-        _vulnerabilities = []
-        _immunities = [EffectType.BLUDGEONING, EffectType.SLASHING]
+def test_boss_battle_actual_damage_with_immunities(test_boss):
+    test_boss._immunities = [EffectType.BLUDGEONING, EffectType.SLASHING]
     
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=10,
         effect_type=EffectType.BLUDGEONING
     ) == 0
     
     assert BossBattle.calc_actual_damage(
-        target=TestBoss(),
+        target=test_boss,
         damage=15,
         effect_type=EffectType.SLASHING
     ) == 0
-
-
-
-def test_boss_battle_calculates_modifiers():
-    assert BossBattle.calc_modifier(8) == -1
-    assert BossBattle.calc_modifier(9) == -1
-    assert BossBattle.calc_modifier(10) == 0
-    assert BossBattle.calc_modifier(11) == 0
-    assert BossBattle.calc_modifier(12) == 1
-    assert BossBattle.calc_modifier(13) == 1
-    assert BossBattle.calc_modifier(14) == 2
     
 
-def test_boss_battle_calculates_ac():
-    class TestCharacter:
-        _stats = Stats(dexterity=10)
-    
-    test_char = TestCharacter()
-    assert BossBattle.calc_ac(test_char) == 10
+def test_boss_battle_calculates_ac(test_boss):
+    test_boss._base_stats.dexterity = 10
+    assert BossBattle.calc_ac(test_boss) == 10
 
-    test_char._stats.dexterity = 12
-    assert BossBattle.calc_ac(test_char) == 11
+    test_boss._base_stats.dexterity = 12
+    assert BossBattle.calc_ac(test_boss) == 11
 
 
 def test_can_create_new_battle():
-    battle = BossBattle(players=[Player("mrgallo"), Player("dave")], bosses=[Squirrel()])
+    battle = BossBattle(players=[Player.roll_fighter("mrgallo"), Player.roll_fighter("dave")], bosses=[Squirrel()])
     assert len(battle._players) == 2
     assert len(battle._bosses) == 1
 
 
 def test_players_and_bosses_correctly_indexed():
-    player_one = Player("mrgallo")
-    player_two = Player("dave")
+    player_one = Player.roll_fighter("mrgallo")
+    player_two = Player.roll_fighter("dave")
     boss = Squirrel()
     battle = BossBattle(players=[player_one, player_two], bosses=[boss])
     assert battle._players["mrgallo"] is player_one
@@ -240,19 +201,19 @@ def test_multiple_bosses_of_same_type_have_unique_names():
 
 
 def test_should_continue_returns_false_with_one_character_per_team():
-    p = Player("player")
+    p = Player.roll_fighter("player")
     b = Squirrel()
     battle = BossBattle(players=[p], bosses=[b])
     
     assert battle._should_continue() == True
 
-    b._stats.health = 0
+    b._health = 0
     assert battle._should_continue() == False
 
-    p._stats.health = 0
+    p._health = 0
     assert battle._should_continue() == False
 
-    b._stats.health = 100
+    b._health = 100
     assert battle._should_continue() == False
 
 
@@ -260,7 +221,7 @@ def test_should_get_opportunity_tokens_for_all_bosses():
     b1 = Squirrel()
     b2 = Squirrel()
     b3 = Squirrel()
-    p = Player("test")
+    p = Player.roll_fighter("test")
     battle = BossBattle(players=[p], bosses=[b1, b2, b3])
 
     # need to generate tokens first
@@ -282,28 +243,31 @@ def test_should_get_opportunity_tokens_for_all_bosses():
 
 @patch("random.randint", side_effect=[20, 2, 2])
 def test_boss_battle_apply_action(mock_randint):
-    player = Player("test")
+    player = Player.roll_fighter("test")
     boss = Squirrel()
 
     battle = BossBattle(players=[player], bosses=[boss])
     
     ability = AbilityRegistry.registry.get('punch')  # has die of (1, 2)
     # hit roll: 20
-    # damage roll: 2, 2 = 4 (no effect resistances)
 
     result_string = battle._apply_action(player, ability, boss)
-    assert "test inflicts 4 (CRIT)" in result_string
+    assert Stats.calc_modifier(player.stats.get(ability.modifier_type)) == 3
+    # damage roll: 2, 2 + 3 (strength modifier) = 7
+    assert "test inflicts 7 (CRIT)" in result_string
 
 
 @patch("random.randint", side_effect=[19])
 def test_boss_battle_apply_action_misses_squirrel(mock_randint):
-    player = Player("test")
+    player = Player.roll_fighter("test")
     boss = Squirrel()
 
     battle = BossBattle(players=[player], bosses=[boss])
     
     ability = AbilityRegistry.registry.get('punch')  # has die of (1, 2)
     # hit roll: 19, will be lower than squirrel's AC (DEX 100)
+
+    assert BossBattle.calc_ac(boss) == 30
 
     result_string = battle._apply_action(player, ability, boss)
     assert "test's Punch MISSES squirrel" in result_string
@@ -312,8 +276,26 @@ def test_boss_battle_apply_action_misses_squirrel(mock_randint):
 def test_handle_action_throws_error_targeting_invalid_character_name():
     cmd = Command("player1@wrongname/punch")
     boss = Squirrel()
-    player = Player('player1')
+    player = Player.roll_fighter('player1')
     battle = BossBattle(bosses=[boss], players=[player])
 
     with pytest.raises(InvalidTargetError):
         battle.handle_action(cmd)
+
+
+def test_get_ability():
+    class TestAbility(Ability):
+        identifier = "test-ability"
+        name = "Test Ability"
+
+    ability = BossBattle.get_ability('test-ability')
+    assert ability.name == "Test Ability"
+
+    with pytest.raises(InvalidAbilityError):
+        ability = BossBattle.get_ability('some non-existant ability')
+
+
+def test_minimum_damage_roll_is_1():
+    assert BossBattle.damage_roll(effect_die=(1, 1),
+                                  ability_modifier=-5,
+                                  crit=False) == 1    

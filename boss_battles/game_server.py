@@ -75,7 +75,7 @@ class GameServer:
         self._player_timer_start = 0.0
         
         self._stdscr = stdscr
-        self._battle_messages_players = []
+        self._battle_messages = []
         self._battle_messages_bosses = []
         self._error_messages = []
     
@@ -117,7 +117,7 @@ class GameServer:
         return strings
 
     def _wrap_up_registration_phase(self):
-        players = [Player(n) for n in self._registered_usernames]
+        players = [Player.roll_fighter(n) for n in self._registered_usernames]
         self._battle = BossBattle(bosses=self._bosses, players=players)
         self._next_battle_phase()
 
@@ -140,7 +140,7 @@ class GameServer:
                 continue
 
             self._registered_usernames.add(user)
-            self._battle_messages_players.append("Welcome " + user.upper() + "!")
+            self._battle_messages.append("Welcome " + user.upper() + "!")
 
     def _battle_round_init(self):
         if not self._battle.next_round():
@@ -246,7 +246,7 @@ class GameServer:
             current_time = time.time()
             elapsed_time = current_time - self._player_timer_start
             time_remaining = self._player_turn_time - elapsed_time
-            draw_text(timer_panel, 0, 0, f"{round(time_remaining, 2):.2f}", align="center")
+            draw_text(timer_panel, 0, 0, f"{round(time_remaining, 1):.1f}", align="center")
             timer_panel.refresh()
 
             # COMBAT LOG
@@ -257,7 +257,7 @@ class GameServer:
                                              (width // 2) - (combat_log_panel_width))
             combat_log_panel.border()
             combat_log_panel.addstr(0, 2, "Combat Log")
-            for i, msg in enumerate(self._battle_messages_players[-combat_log_panel_height+2:]):
+            for i, msg in enumerate(self._battle_messages[-combat_log_panel_height+2:]):
                 combat_log_panel.addstr(i+1, 2, msg)
 
             combat_log_panel.refresh()
@@ -293,15 +293,7 @@ class GameServer:
 
     def _battle_player_turn(self):
         # get actions from players
-        valid_commands = []
-        for action in self._get_action_strings():
-            try:
-                command = Command(action)
-            except InvalidActionStringError as e:
-                self._error_messages.append(f"Invalid message: '{action}'")
-
-            if not any(c.user == command.user for c in valid_commands):
-                valid_commands.append(command)
+        valid_commands = self._gather_valid_commands()
         
         for command in valid_commands:
             try:
@@ -311,7 +303,7 @@ class GameServer:
             except TurnAlreadyTakenError as e:
                 self._error_messages.append(str(e))
             else:
-                self._battle_messages_players.append(result)
+                self._battle_messages.append(result)
         
         current_time = time.time()
         elapsed_time = current_time - self._player_timer_start
@@ -320,7 +312,20 @@ class GameServer:
             self._battle._players_who_have_acted = set()
             self._next_battle_phase()
     
+    def _gather_valid_commands(self) -> list[Command]:
+        valid_commands = []
+        for action in self._get_action_strings():
+            try:
+                command = Command(action)
+            except InvalidActionStringError as e:
+                self._error_messages.append(f"Invalid message: '{action}'")
+
+            if not any(c.user == command.user for c in valid_commands):
+                valid_commands.append(command)
+        return valid_commands
+    
     def _battle_boss_turn(self):
         result = self._battle.bosses_turn()
-        self._battle_messages_bosses.append(result)
+        self._battle_messages.append(result)
         self._next_battle_phase()
+    

@@ -1,5 +1,5 @@
 import pytest
-from boss_battles.ability import AbilityRegistry, Punch, CureWounds, Longsword, FireBolt
+from boss_battles.ability import AbilityRegistry, Punch, CureWounds, Longsword, FireBolt, Cower
 from boss_battles.character import Stats, Boss, Player
 
 
@@ -60,4 +60,5 @@ def test_swift_longsword_registry_lookup():
 def test_swift_longsword_algorithm():
     lsword = Longsword()
     assert lsword.algorithm(op_token="abcd") == "abcd"
+
 

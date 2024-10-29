@@ -64,9 +64,11 @@ class DifficultTestAttack(Ability):
 @patch("random.randint", side_effect=[20, 1, 1, 20, 1, 1])
 def test_squirrel_battle(mock_randint):
     class OnlyBiteSquirrel(Squirrel):
-        _ability_set = ("bite",)
+        def __init__(self):
+            super().__init__(hit_die=(5, 4))
 
     boss = OnlyBiteSquirrel()
+    boss._ability_set = ("bite", )
     reader = FakeReader()
     reader.add_messages([
         "player/register",
@@ -78,21 +80,25 @@ def test_squirrel_battle(mock_randint):
     assert runner._current_phase == runner._battle_round_init
     runner.run()  # run round init
 
-    boss_health_before = boss._stats.health
+    boss_health_before = boss.get_health()
     player = runner.battle.get_player('player')
-    player_health_before = player._stats.health
+    player_health_before = player.get_health()
     reader.add_message("player@squirrel/punch")
     runner.run()  # run player turn
-    assert boss._stats.health == boss_health_before - 2
+    # 1, 1, +3 const mod = 5 damage
+    assert boss.get_health() == boss_health_before - 5
+    assert boss.is_conscious() is True
 
+    assert runner._current_phase == runner._battle_boss_turn
     runner.run()  # run boss turn
-    assert player._stats.health == player_health_before - 2
+    # boss rolls a 1 for bite, str mod -5, but all damage is at least 1
+    assert player.get_health() == player_health_before - 1
     
 
 @patch("random.randint", side_effect=[20, 1, 1])
 def test_squirrel_battle_taking_correct_solves_into_account(mock_randint):
     boss = Squirrel()
-    boss._stats.health = 2
+    boss._health = 2
     reader = FakeReader()
     reader.add_messages([
         "player/register",
@@ -101,10 +107,10 @@ def test_squirrel_battle_taking_correct_solves_into_account(mock_randint):
     runner = FakeGameServer(bosses=[boss], reader=reader)
     runner.run()
 
-    boss_previous_health = boss._stats.health
+    boss_previous_health = boss.get_health()
     reader.add_message("player@squirrel/difficulttestattack wrongtoken")
     runner.run()
-    assert boss._stats.health == boss_previous_health  # bad token, so ability doesn't trigger
+    assert boss.get_health() == boss_previous_health  # bad token, so ability doesn't trigger
 
 
 # def test_squirrel_battle_taking_op_tokens_into_account():

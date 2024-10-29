@@ -100,7 +100,7 @@ class Punch(Ability):
 class Bite(Ability):
     identifier = "bite"
     name = "Bite"
-    effect_type = EffectType.SLASHING
+    effect_type = EffectType.PIERCING
     effect_die = (1, 1)
     modifier_type = Stats.Type.STRENGTH
 
