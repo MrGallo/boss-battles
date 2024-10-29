@@ -233,10 +233,10 @@ class GameServer:
             bar_width = width // 2
             for i, boss in enumerate(self._battle.bosses):
                 percent = boss.get_health() / boss.get_max_health()
-                remaining = int(bar_width * percent)
-                gone = bar_width - remaining
+                bars_remaining = int(bar_width * percent)
+                gone = bar_width - bars_remaining
                 remaining, maximum = boss.get_remaining_and_max_health()
-                bar = f"{boss._name.upper():>10} {'█' * remaining}{'░' * gone} ({remaining} / {maximum})"
+                bar = f"{boss._name.upper():>10} {'█' * bars_remaining}{'░' * gone} ({remaining} / {maximum})"
                 bar_panel.addstr(i + 2, (width//2) - (len(bar)//2), bar)
             
             bar_panel.refresh()

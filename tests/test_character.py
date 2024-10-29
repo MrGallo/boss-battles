@@ -1,7 +1,7 @@
 import pytest
 
 
-from boss_battles.character import Boss, Stats, Squirrel, Player, CharacterClass
+from boss_battles.character import Boss, Stats, Squirrel, Player, CharacterClass, GiantWolfSpider
 from boss_battles.game import BossBattle
 from boss_battles.ability import EffectType
 
@@ -152,3 +152,11 @@ def test_boss_immunity(boss):
 
 # test_multiple_bosses_shouldnt_have_the_same_resistances():
     "They should to start, but suffer different effect vulnerabilities individually"
+
+
+
+def test_giant_wolf_spider():
+    spider = GiantWolfSpider()
+    assert BossBattle.calc_ac(spider) == 13
+    assert spider.get_health() == 11
+    assert "wolfspiderbite" in spider._ability_set

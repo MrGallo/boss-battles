@@ -237,6 +237,13 @@ class Squirrel(Boss):
         random_player = random.choice(tuple(battle.players))
         return (self, ability, random_player)
 
+class GiantWolfSpider(Boss):
+    def __init__(self):
+        super().__init__(name="giant wolf spider",
+                         hit_die=(2, 8),
+                         base_stats=Stats(12, 16, 13, 12, 3, 4),
+                         challenge_rating=1)
+        self._ability_set = ("wolfspiderbite", )
 
 class PracticeDummy(Boss):
     def __init__(self):
