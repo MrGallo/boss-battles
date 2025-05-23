@@ -1,6 +1,5 @@
 # boss-battles
 A Micro:bit based coding challenge game
-blah
 
 ## Development
 ### Clone the repo
